@@ -1,1 +1,132 @@
-<!DOCTYPE html><html><head><title>loading</title></head><body><script>location.reload()</script>Updating...</body></html>
+<!DOCTYPE html>
+<html lang="en" class="h-full dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>Chat Room</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={darkMode:'class',theme:{extend:{animation:{'bounce-dot':'bounceDot 1.4s infinite ease-in-out both','fade-in':'fadeIn .25s ease-out','slide-up':'slideUp .35s ease-out'},keyframes:{bounceDot:{'0%,80%,100%':{transform:'scale(.6)',opacity:'.4'},'40%':{transform:'scale(1)',opacity:'1'}},fadeIn:{'0%':{opacity:'0',transform:'translateY(8px)'},'100%':{opacity:'1',transform:'translateY(0)'}},slideUp:{'0%':{opacity:'0',transform:'translateY(24px)'},'100%':{opacity:'1',transform:'translateY(0)'}}}}}}</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>*{-webkit-tap-highlight-color:transparent;box-sizing:border-box}html,body{height:100%;margin:0;background:#000;color:#fff}#messages{overflow-y:auto;overflow-x:hidden}#messages::-webkit-scrollbar{width:0}input,button{font-size:16px}.gradient-ring{background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)}.bubble-out{background:linear-gradient(135deg,#405DE6,#5851DB,#833AB4,#C13584,#E1306C)}.welcome-gradient{background:radial-gradient(ellipse at 50% 0%,rgba(131,58,180,.25) 0%,transparent 60%),#000}.quote-card-bg{background:linear-gradient(135deg,#1a1a2e,#16213e,#0f0f23)}.announce-card-bg{background:linear-gradient(135deg,#0c4a6e,#1e3a5f,#0f172a)}</style>
+</head>
+<body class="h-full overflow-hidden select-none">
+<div id="welcome-screen" class="fixed inset-0 z-50 welcome-gradient flex flex-col items-center justify-between px-6 py-12">
+<div class="flex-1 flex flex-col items-center justify-center text-center space-y-6 animate-slide-up">
+<div class="w-24 h-24 rounded-full gradient-ring p-[3px]"><div class="w-full h-full rounded-full bg-black flex items-center justify-center text-4xl">💬</div></div>
+<div class="space-y-2"><h1 class="text-3xl font-bold">Welcome</h1><p class="text-zinc-400 text-[15px] max-w-xs mx-auto">Chat with friends in real time.<br/>Public or private rooms.</p></div>
+</div>
+<button id="welcome-next" class="w-full max-w-sm py-4 rounded-2xl bg-white text-black font-semibold">Get Started</button>
+</div>
+<div id="join-screen" class="hidden fixed inset-0 z-40 bg-black flex flex-col items-center justify-center px-6">
+<div class="w-full max-w-sm space-y-6 animate-slide-up">
+<div class="text-center"><h2 class="text-2xl font-semibold">Join a chat</h2><p class="text-sm text-zinc-500">Enter your name to continue</p></div>
+<input id="name-input" type="text" maxlength="24" placeholder="Your name" class="w-full px-4 py-3.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-600 focus:outline-none" autocomplete="off"/>
+<button id="join-public" class="w-full py-3.5 rounded-xl bg-white text-black font-semibold disabled:opacity-40">Join Public Room</button>
+<div class="flex items-center gap-3"><div class="flex-1 h-px bg-zinc-800"></div><span class="text-xs text-zinc-600">or</span><div class="flex-1 h-px bg-zinc-800"></div></div>
+<input id="room-input" type="text" maxlength="20" placeholder="Private room code" class="w-full px-4 py-3.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-600 uppercase tracking-wider focus:outline-none" autocomplete="off"/>
+<button id="join-private" class="w-full py-3.5 rounded-xl bg-zinc-800 text-white font-semibold border border-zinc-700 disabled:opacity-40">Join Private Room</button>
+<button id="back-to-welcome" class="w-full text-sm text-zinc-500 py-2">← Back</button>
+</div>
+</div>
+<div id="app" class="hidden h-full max-w-lg mx-auto flex flex-col relative bg-black">
+<header class="flex-shrink-0 flex items-center gap-3 px-3 py-2.5 bg-black/80 backdrop-blur-md border-b border-zinc-800/80 z-20">
+<button id="leave-btn" class="p-1.5 -ml-1 text-white"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+<div class="relative flex-shrink-0"><div class="w-9 h-9 rounded-full gradient-ring p-[2px]"><div id="room-avatar" class="w-full h-full rounded-full bg-zinc-800 flex items-center justify-center text-sm font-medium"></div></div><span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-black"></span></div>
+<div class="flex-1 min-w-0"><h1 id="room-title" class="text-[15px] font-semibold truncate"></h1><p id="room-status" class="text-[11px] text-zinc-400">Active now</p></div>
+<button id="share-btn" class="hidden p-2 text-white opacity-80">Share</button>
+</header>
+<div id="messages" class="flex-1 flex flex-col px-3 py-3 gap-1" style="overflow-y:auto;overflow-x:hidden">
+<div id="empty-state" class="flex flex-col items-center justify-center flex-1 text-center py-16"><p class="text-sm text-zinc-500">Send a message to start</p></div>
+</div>
+<div id="typing-indicator" class="hidden flex-shrink-0 px-3 pb-1"><div class="flex items-end gap-2"><div class="w-7 h-7 rounded-full bg-zinc-800"></div><div class="bg-zinc-800 rounded-3xl rounded-bl-lg px-4 py-3 flex gap-1"><span class="w-1.5 h-1.5 rounded-full bg-zinc-500 animate-bounce-dot"></span><span class="w-1.5 h-1.5 rounded-full bg-zinc-500 animate-bounce-dot" style="animation-delay:160ms"></span><span class="w-1.5 h-1.5 rounded-full bg-zinc-500 animate-bounce-dot" style="animation-delay:320ms"></span></div></div></div>
+<div id="emoji-picker" class="hidden absolute bottom-20 left-3 right-3 bg-zinc-900 border border-zinc-800 rounded-2xl p-3 z-40"><div class="grid grid-cols-8 gap-1"></div></div>
+<div class="flex-shrink-0 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 bg-black border-t border-zinc-900">
+<form id="message-form" class="flex items-center gap-2">
+<div class="flex-1 flex items-center gap-1.5 rounded-full bg-zinc-900 border border-zinc-800 pl-1.5 pr-2 py-1.5">
+<button type="button" class="w-8 h-8 rounded-full bg-[#3797F0] flex items-center justify-center text-white text-sm">📷</button>
+<input id="message-input" type="text" placeholder="Message..." maxlength="500" autocomplete="off" class="flex-1 bg-transparent text-[15px] text-white placeholder-zinc-500 focus:outline-none px-1.5 py-1.5 min-w-0"/>
+<div id="idle-icons" class="flex items-center gap-0.5">
+<button type="button" id="canva-btn" class="p-1.5 text-white" title="Canva">✨</button>
+<button type="button" id="emoji-btn" class="p-1.5 text-white opacity-70">😊</button>
+</div>
+<button type="submit" id="send-btn" class="hidden text-[#3797F0] font-semibold text-[15px] px-2">Send</button>
+</div>
+</form>
+</div>
+</div>
+<div id="canva-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 p-0 sm:p-5">
+<div class="w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-t-3xl sm:rounded-2xl p-5 space-y-4">
+<div class="flex items-center justify-between"><div class="flex items-center gap-2"><span class="text-xl">✨</span><h3 class="text-lg font-semibold">Create with Canva</h3></div><button id="close-canva" class="p-2 text-zinc-500">✕</button></div>
+<p class="text-sm text-zinc-500">Turn chat moments into shareable designs</p>
+<button id="canva-quote" class="w-full flex items-center gap-3 p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 text-left"><div class="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center">❝</div><div><div class="font-medium">Quote Card</div><div class="text-xs text-zinc-500">Instagram-style quote from any message</div></div></button>
+<button id="canva-announce" class="w-full flex items-center gap-3 p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 text-left"><div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">📢</div><div><div class="font-medium">Announcement</div><div class="text-xs text-zinc-500">Room banner for news or events</div></div></button>
+<button id="canva-blank" class="w-full flex items-center gap-3 p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 text-left"><div class="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center">🎨</div><div><div class="font-medium">Open Canva</div><div class="text-xs text-zinc-500">Launch a blank design</div></div></button>
+</div>
+</div>
+<div id="design-form-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-5">
+<div class="w-full max-w-sm bg-zinc-950 border border-zinc-800 rounded-2xl p-5 space-y-4">
+<h3 id="design-form-title" class="text-lg font-semibold">Create Quote</h3>
+<textarea id="design-form-text" rows="4" maxlength="280" placeholder="Your text..." class="w-full px-3 py-3 rounded-xl bg-zinc-900 border border-zinc-800 text-sm text-white placeholder-zinc-600 focus:outline-none resize-none"></textarea>
+<input id="design-form-author" type="text" maxlength="40" placeholder="Author (optional)" class="w-full px-3 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-sm text-white placeholder-zinc-600 focus:outline-none"/>
+<div class="flex gap-2"><button id="design-form-cancel" class="flex-1 py-2.5 rounded-xl text-sm text-zinc-400 border border-zinc-800">Cancel</button><button id="design-form-submit" class="flex-1 py-2.5 rounded-xl bg-white text-black text-sm font-semibold">Create & Send</button></div>
+</div>
+</div>
+<div id="share-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-5">
+<div class="w-full max-w-sm bg-zinc-900 rounded-2xl border border-zinc-800 p-5 space-y-4">
+<div class="text-center"><h3 class="text-lg font-semibold">Share Room</h3></div>
+<div class="flex gap-2"><input id="share-link-input" type="text" readonly class="flex-1 px-3 py-2.5 rounded-xl bg-zinc-800 border border-zinc-700 text-sm"/><button id="copy-link-btn" class="px-4 py-2.5 rounded-xl bg-white text-black text-sm font-semibold">Copy</button></div>
+<div class="grid grid-cols-2 gap-2"><a id="share-whatsapp" target="_blank" rel="noopener" class="py-2.5 rounded-xl bg-emerald-600 text-white text-sm text-center">WhatsApp</a><a id="share-telegram" target="_blank" rel="noopener" class="py-2.5 rounded-xl bg-sky-600 text-white text-sm text-center">Telegram</a></div>
+<button id="close-share" class="w-full py-2.5 text-sm text-zinc-400">Close</button>
+</div>
+</div>
+<script>
+const SUPABASE_URL='https://vwpvbhuqvxmshkktqncp.supabase.co',SUPABASE_ANON_KEY='sb_publishable_zGlQFEHSb-H1KblpZ6AfVQ_Vn8x1ozE',PUBLIC_ROOM='PUBLIC',RATE_LIMIT_MS=1800;
+let supabaseClient=null,displayName=localStorage.getItem('chatroom_name')||'',roomCode=localStorage.getItem('chatroom_room')||'',messages=[],lastSentAt=0,presenceChannel=null,messagesChannel=null,onlineUsers={},typingUsers=new Set(),hideTypingTimer=null;
+const EMOJIS=['😀','😂','😍','🥰','😎','😢','😡','🙌','👍','🔥','✨','💯','🎉','❤️','🚀','💬'];
+const welcomeScreen=document.getElementById('welcome-screen'),joinScreen=document.getElementById('join-screen'),app=document.getElementById('app'),nameInput=document.getElementById('name-input'),roomInput=document.getElementById('room-input'),joinPublic=document.getElementById('join-public'),joinPrivate=document.getElementById('join-private'),shareBtn=document.getElementById('share-btn'),messageInput=document.getElementById('message-input'),sendBtn=document.getElementById('send-btn'),idleIcons=document.getElementById('idle-icons');
+document.getElementById('welcome-next').onclick=()=>{welcomeScreen.classList.add('hidden');joinScreen.classList.remove('hidden');setTimeout(()=>nameInput.focus(),100)};
+document.getElementById('back-to-welcome').onclick=()=>{joinScreen.classList.add('hidden');welcomeScreen.classList.remove('hidden')};
+function updateButtons(){const n=nameInput.value.trim().length>=2;joinPublic.disabled=!n;joinPrivate.disabled=!n||roomInput.value.trim().length<3}
+nameInput.oninput=updateButtons;roomInput.oninput=()=>{roomInput.value=roomInput.value.replace(/[^a-zA-Z0-9-_]/g,'').toUpperCase();updateButtons()};
+function avatarColor(n){const c=['#E1306C','#833AB4','#405DE6','#3797F0','#22C55E','#F59E0B'];let h=0;for(let i=0;i<(n||'').length;i++)h=n.charCodeAt(i)+((h<<5)-h);return c[Math.abs(h)%c.length]}
+function initials(n){return (n||'?').slice(0,2).toUpperCase()}
+function enterRoom(name,room){displayName=name;roomCode=room;localStorage.setItem('chatroom_name',name);localStorage.setItem('chatroom_room',room);welcomeScreen.classList.add('hidden');joinScreen.classList.add('hidden');app.classList.remove('hidden');const t=room===PUBLIC_ROOM?'Open Room':room;document.getElementById('room-title').textContent=t;const av=document.getElementById('room-avatar');av.textContent=initials(t);av.style.background=avatarColor(t);shareBtn.classList.toggle('hidden',room===PUBLIC_ROOM);initChat()}
+if(displayName&&roomCode)enterRoom(displayName,roomCode);else{const p=new URLSearchParams(location.search);const ir=(p.get('room')||'').toUpperCase().replace(/[^A-Z0-9-_]/g,'');if(ir&&ir.length>=3&&ir!=='PUBLIC'){welcomeScreen.classList.add('hidden');joinScreen.classList.remove('hidden');roomInput.value=ir}}
+joinPublic.onclick=()=>{const n=nameInput.value.trim();if(n.length>=2)enterRoom(n,PUBLIC_ROOM)};
+joinPrivate.onclick=()=>{const n=nameInput.value.trim(),r=roomInput.value.trim().toUpperCase();if(n.length>=2&&r.length>=3&&r!==PUBLIC_ROOM)enterRoom(n,r)};
+document.getElementById('leave-btn').onclick=()=>{localStorage.removeItem('chatroom_room');localStorage.removeItem('chatroom_name');location.href=location.pathname};
+const shareModal=document.getElementById('share-modal');
+shareBtn.onclick=()=>{if(!roomCode||roomCode===PUBLIC_ROOM)return;const link=new URL(location.origin+location.pathname);link.searchParams.set('room',roomCode);document.getElementById('share-link-input').value=link;document.getElementById('share-whatsapp').href='https://wa.me/?text='+encodeURIComponent('Join my chat! '+link);document.getElementById('share-telegram').href='https://t.me/share/url?url='+encodeURIComponent(link);shareModal.classList.remove('hidden')};
+document.getElementById('close-share').onclick=()=>shareModal.classList.add('hidden');
+document.getElementById('copy-link-btn').onclick=async()=>{try{await navigator.clipboard.writeText(document.getElementById('share-link-input').value);document.getElementById('copy-link-btn').textContent='Copied!'}catch{}};
+messageInput.oninput=()=>{const h=messageInput.value.trim().length>0;sendBtn.classList.toggle('hidden',!h);idleIcons.classList.toggle('hidden',h);if(h)broadcastTyping()};
+const emojiPicker=document.getElementById('emoji-picker'),emojiGrid=emojiPicker.querySelector('div');
+EMOJIS.forEach(e=>{const b=document.createElement('button');b.type='button';b.className='w-9 h-9 text-xl';b.textContent=e;b.onclick=()=>{messageInput.value+=e;messageInput.dispatchEvent(new Event('input'));emojiPicker.classList.add('hidden')};emojiGrid.appendChild(b)});
+document.getElementById('emoji-btn').onclick=e=>{e.stopPropagation();emojiPicker.classList.toggle('hidden')};
+const canvaModal=document.getElementById('canva-modal'),designFormModal=document.getElementById('design-form-modal');let designFormMode='quote';
+document.getElementById('canva-btn').onclick=e=>{e.stopPropagation();canvaModal.classList.remove('hidden')};
+document.getElementById('close-canva').onclick=()=>canvaModal.classList.add('hidden');
+document.getElementById('canva-blank').onclick=()=>{canvaModal.classList.add('hidden');window.open('https://www.canva.com/create','_blank')};
+function openDesignForm(mode){designFormMode=mode;canvaModal.classList.add('hidden');document.getElementById('design-form-title').textContent=mode==='quote'?'Create Quote Card':'Create Announcement';document.getElementById('design-form-text').value='';document.getElementById('design-form-author').value=displayName||'';designFormModal.classList.remove('hidden')}
+document.getElementById('canva-quote').onclick=()=>openDesignForm('quote');
+document.getElementById('canva-announce').onclick=()=>openDesignForm('announce');
+document.getElementById('design-form-cancel').onclick=()=>designFormModal.classList.add('hidden');
+document.getElementById('design-form-submit').onclick=async()=>{const text=document.getElementById('design-form-text').value.trim();const author=document.getElementById('design-form-author').value.trim()||displayName;if(!text)return;designFormModal.classList.add('hidden');const payload=designFormMode==='quote'?`[CANVA_QUOTE]${JSON.stringify({text,author})}[/CANVA_QUOTE]`:`[CANVA_ANNOUNCE]${JSON.stringify({text,author})}[/CANVA_ANNOUNCE]`;await sendMessage(payload)};
+function handleCanvaCommand(raw){const t=raw.trim(),l=t.toLowerCase();if(l==='/canva'||l==='/design'){canvaModal.classList.remove('hidden');return true}if(l.startsWith('@canva search ')||l.startsWith('/canva search ')){const q=t.replace(/^@?canva search /i,'').trim()||'templates';window.open('https://www.canva.com/templates/?query='+encodeURIComponent(q),'_blank');return true}if(l.startsWith('@canva')){window.open('https://www.canva.com/','_blank');return true}return false}
+function parseSpecialContent(content){const qm=content.match(/^\[CANVA_QUOTE\]([\s\S]*?)\[\/CANVA_QUOTE\]$/);if(qm){try{return{type:'quote',data:JSON.parse(qm[1])}}catch{}}const am=content.match(/^\[CANVA_ANNOUNCE\]([\s\S]*?)\[\/CANVA_ANNOUNCE\]$/);if(am){try{return{type:'announce',data:JSON.parse(am[1])}}catch{}}if(/canva\.com\/(design|brand)\//i.test(content))return{type:'canva_link',data:{url:content.trim()}};return null}
+function renderDesignCard(s){if(s.type==='quote'){const{text,author}=s.data;return`<div class="quote-card-bg rounded-2xl border border-zinc-700 overflow-hidden max-w-[280px]"><div class="p-5 space-y-2"><div class="text-2xl text-pink-400">“</div><p class="text-[15px] text-zinc-100 font-medium">${escapeHtml(text)}</p><p class="text-xs text-zinc-400">— ${escapeHtml(author||'')}</p></div><div class="px-4 py-2 border-t border-zinc-700/50 flex justify-between"><span class="text-[10px] text-zinc-500">✨ Quote</span><a href="https://www.canva.com/create/instagram-posts/" target="_blank" class="text-[11px] text-[#3797F0]">Edit in Canva</a></div></div>`}if(s.type==='announce'){const{text,author}=s.data;return`<div class="announce-card-bg rounded-2xl border border-sky-800/50 overflow-hidden max-w-[280px]"><div class="p-4 space-y-2"><div class="text-xs text-sky-300 font-semibold">📢 ANNOUNCEMENT</div><p class="text-[15px] text-white font-medium">${escapeHtml(text)}</p><p class="text-[11px] text-sky-200/60">from ${escapeHtml(author||'')}</p></div><div class="px-4 py-2 border-t border-sky-900/50"><a href="https://www.canva.com/create/posters/" target="_blank" class="text-[11px] text-sky-400">Open Canva</a></div></div>`}if(s.type==='canva_link')return`<div class="rounded-2xl border border-zinc-700 p-4 max-w-[280px]"><div class="font-medium text-sm mb-2">🎨 Canva Design</div><a href="${escapeHtml(s.data.url)}" target="_blank" class="block text-center py-2 rounded-xl bg-white text-black text-xs font-semibold">Open in Canva</a></div>`;return null}
+function escapeHtml(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML}
+function formatDivider(iso){const d=new Date(iso),now=new Date();if(d.toDateString()===now.toDateString())return'Today '+d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});return d.toLocaleDateString([],{month:'short',day:'numeric'})}
+async function sendMessage(content){content=content.trim();if(!content||!displayName||!roomCode)return;if(Date.now()-lastSentAt<RATE_LIMIT_MS)return;lastSentAt=Date.now();await supabaseClient.from('messages').insert({username:displayName,content,room_code:roomCode})}
+function createMessageElement(msg,prev,next){const isMine=msg.username===displayName;const samePrev=prev&&prev.username===msg.username;const sameNext=next&&next.username===msg.username;const row=document.createElement('div');row.className='w-full flex '+(isMine?'justify-end':'justify-start')+' animate-fade-in';row.style.marginTop=samePrev?'2px':'8px';let av='';if(!isMine)av=!sameNext?`<div class="w-7 h-7 rounded-full flex items-center justify-center text-[10px] text-white self-end" style="background:${avatarColor(msg.username)}">${initials(msg.username)}</div>`:`<div class="w-7 h-7"></div>`;let name=!isMine&&!samePrev?`<div class="text-[11px] text-zinc-500 mb-0.5 ml-1">${escapeHtml(msg.username)}</div>`:'';const special=parseSpecialContent(msg.content);let body='';if(special)body=renderDesignCard(special);if(!body){const r='rounded-3xl';const bc=isMine?`bubble-out text-white ${r} px-3.5 py-2 text-[15px]`:`bg-zinc-800 text-zinc-100 ${r} px-3.5 py-2 text-[15px]`;body=`<div class="${bc}">${escapeHtml(msg.content)}</div>`}row.innerHTML=`<div class="flex items-end gap-1.5 ${isMine?'flex-row-reverse':''}" style="max-width:90%">${av}<div class="flex flex-col ${isMine?'items-end':'items-start'}">${name}${body}</div></div>`;return row}
+function renderMessages(){const c=document.getElementById('messages'),empty=document.getElementById('empty-state');[...c.children].forEach(el=>{if(el.id!=='empty-state')el.remove()});if(!messages.length){empty.classList.remove('hidden');return}empty.classList.add('hidden');let last='';messages.forEach((m,i)=>{const day=new Date(m.created_at).toDateString();if(day!==last){last=day;const d=document.createElement('div');d.className='w-full flex justify-center my-3';d.innerHTML=`<span class="text-[11px] text-zinc-500">${formatDivider(m.created_at)}</span>`;c.appendChild(d)}c.appendChild(createMessageElement(m,messages[i-1],messages[i+1]))});c.scrollTop=c.scrollHeight}
+function appendMessage(msg){document.getElementById('empty-state').classList.add('hidden');document.getElementById('messages').appendChild(createMessageElement(msg,messages[messages.length-2],null));document.getElementById('messages').scrollTop=99999}
+async function loadMessages(){const{data}=await supabaseClient.from('messages').select('*').eq('room_code',roomCode).order('created_at',{ascending:true}).limit(150);messages=data||[];renderMessages()}
+function subscribeToMessages(){if(messagesChannel)supabaseClient.removeChannel(messagesChannel);messagesChannel=supabaseClient.channel('room-msgs:'+roomCode).on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:'room_code=eq.'+roomCode},p=>{if(!messages.find(m=>m.id===p.new.id)){messages.push(p.new);appendMessage(p.new)}}).subscribe()}
+function setupPresence(){if(presenceChannel)supabaseClient.removeChannel(presenceChannel);presenceChannel=supabaseClient.channel('room:'+roomCode,{config:{presence:{key:displayName}}}).on('presence',{event:'sync'},()=>{onlineUsers={};Object.values(presenceChannel.presenceState()).forEach(ps=>ps.forEach(p=>{if(p.user)onlineUsers[p.user]=true}));onlineUsers[displayName]=true;const n=Object.keys(onlineUsers).length;document.getElementById('room-status').textContent=n<=1?'Active now':n+' active now'}).on('broadcast',{event:'typing'},({payload})=>{if(payload.user===displayName)return;document.getElementById('typing-indicator').classList.remove('hidden');clearTimeout(hideTypingTimer);hideTypingTimer=setTimeout(()=>document.getElementById('typing-indicator').classList.add('hidden'),2500)}).subscribe(async s=>{if(s==='SUBSCRIBED')await presenceChannel.track({user:displayName})})}
+function broadcastTyping(){presenceChannel&&presenceChannel.send({type:'broadcast',event:'typing',payload:{user:displayName}})}
+document.getElementById('message-form').onsubmit=async e=>{e.preventDefault();const text=messageInput.value.trim();if(!text)return;if(handleCanvaCommand(text)){messageInput.value='';messageInput.dispatchEvent(new Event('input'));return}await sendMessage(text);messageInput.value='';messageInput.dispatchEvent(new Event('input'))};
+function initChat(){supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);loadMessages();subscribeToMessages();setupPresence()}
+</script>
+</body>
+</html>
