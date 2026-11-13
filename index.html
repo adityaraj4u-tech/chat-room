@@ -1,15 +1,148 @@
 <!DOCTYPE html>
 <html lang="en" class="h-full dark">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Chat Room</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>body{background:#000;color:#fff;margin:0;font-family:system-ui}</style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>Chat Room</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={darkMode:'class',theme:{extend:{animation:{'bounce-dot':'bounceDot 1.4s infinite ease-in-out both','fade-in':'fadeIn .2s ease-out','scale-in':'scaleIn .15s ease-out'},keyframes:{bounceDot:{'0%,80%,100%':{transform:'scale(.6)',opacity:'.4'},'40%':{transform:'scale(1)',opacity:'1'}},fadeIn:{'0%':{opacity:'0',transform:'translateY(6px)'},'100%':{opacity:'1',transform:'translateY(0)'}},scaleIn:{'0%':{opacity:'0',transform:'scale(.85)'},'100%':{opacity:'1',transform:'scale(1)'}}}}}}</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>*{-webkit-tap-highlight-color:transparent}html,body{height:100%;background:#000}#messages::-webkit-scrollbar{width:0}input,button{font-size:16px}.gradient-ring{background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)}.bubble-out{background:linear-gradient(135deg,#405DE6,#5851DB,#833AB4,#C13584,#E1306C)}.reaction-badge{box-shadow:0 1px 3px rgba(0,0,0,.4)}</style>
 </head>
-<body>
-  <p style="padding:2rem;text-align:center">Redeploying Instagram DM redesign... Refresh in a moment.</p>
-  <script>setTimeout(()=>location.reload(),3000)</script>
+<body class="h-full bg-black text-white overflow-hidden select-none">
+
+<div id="name-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-5">
+<div class="w-full max-w-sm space-y-6">
+<div class="text-center space-y-1">
+<div class="w-16 h-16 mx-auto mb-4 rounded-full gradient-ring p-[2px]"><div class="w-full h-full rounded-full bg-black flex items-center justify-center text-2xl">💬</div></div>
+<h2 class="text-2xl font-semibold tracking-tight">Chat Room</h2>
+<p class="text-sm text-zinc-500">Join a conversation</p>
+</div>
+<input id="name-input" type="text" maxlength="24" placeholder="Your name" class="w-full px-4 py-3.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition" autocomplete="off"/>
+<button id="join-public" class="w-full py-3.5 rounded-xl bg-white text-black font-semibold transition active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed">Join Public Room</button>
+<div class="flex items-center gap-3"><div class="flex-1 h-px bg-zinc-800"></div><span class="text-xs text-zinc-600 uppercase tracking-wider">or</span><div class="flex-1 h-px bg-zinc-800"></div></div>
+<div class="space-y-3">
+<input id="room-input" type="text" maxlength="20" placeholder="Private room code" class="w-full px-4 py-3.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition uppercase tracking-wider" autocomplete="off"/>
+<button id="join-private" class="w-full py-3.5 rounded-xl bg-zinc-800 text-white font-semibold border border-zinc-700 transition active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed">Join Private Room</button>
+</div>
+</div>
+</div>
+
+<div id="app" class="hidden flex flex-col h-full max-w-lg mx-auto relative">
+<header class="sticky top-0 z-30 flex items-center gap-3 px-3 py-2.5 bg-black/80 backdrop-blur-md border-b border-zinc-800/80">
+<button id="leave-btn" class="p-1.5 -ml-1 text-white"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+<div class="relative flex-shrink-0"><div class="w-9 h-9 rounded-full gradient-ring p-[2px]"><div id="room-avatar" class="w-full h-full rounded-full bg-zinc-800 flex items-center justify-center text-sm font-medium"></div></div><span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-black"></span></div>
+<div class="flex-1 min-w-0"><h1 id="room-title" class="text-[15px] font-semibold truncate leading-tight"></h1><p id="room-status" class="text-[11px] text-zinc-400 leading-tight">Active now</p></div>
+<div class="flex items-center gap-1">
+<button class="p-2 text-white opacity-80" title="Voice"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg></button>
+<button class="p-2 text-white opacity-80" title="Video"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg></button>
+<button id="share-btn" class="hidden p-2 text-white opacity-80" title="Share"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg></button>
+<button class="p-2 text-white opacity-80" title="Info"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></button>
+</div>
+</header>
+
+<div id="messages" class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+<div id="empty-state" class="flex flex-col items-center justify-center h-full text-center py-20">
+<div class="w-20 h-20 rounded-full border-2 border-zinc-700 flex items-center justify-center mb-4"><svg class="w-10 h-10 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg></div>
+<p class="text-sm text-zinc-500">Send a message to start the chat</p>
+</div>
+</div>
+
+<div id="typing-indicator" class="hidden px-3 pb-1">
+<div class="flex items-end gap-2">
+<div class="w-7 h-7 rounded-full bg-zinc-800 flex-shrink-0"></div>
+<div class="bg-zinc-800 rounded-3xl rounded-bl-lg px-4 py-3 flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-zinc-500 animate-bounce-dot" style="animation-delay:0ms"></span>
+<span class="w-1.5 h-1.5 rounded-full bg-zinc-500 animate-bounce-dot" style="animation-delay:160ms"></span>
+<span class="w-1.5 h-1.5 rounded-full bg-zinc-500 animate-bounce-dot" style="animation-delay:320ms"></span>
+</div>
+</div>
+</div>
+
+<div id="emoji-picker" class="hidden absolute bottom-20 left-3 right-3 bg-zinc-900 border border-zinc-800 rounded-2xl p-3 z-40 shadow-2xl"><div class="grid grid-cols-8 gap-1"></div></div>
+
+<div class="px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 bg-black">
+<form id="message-form" class="flex items-center gap-2">
+<div class="flex-1 flex items-center gap-1.5 rounded-full bg-zinc-900 border border-zinc-800 pl-1.5 pr-2 py-1.5">
+<button type="button" id="camera-btn" class="flex-shrink-0 w-8 h-8 rounded-full bg-[#3797F0] flex items-center justify-center text-white"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg></button>
+<input id="message-input" type="text" placeholder="Message..." maxlength="500" autocomplete="off" class="flex-1 bg-transparent text-[15px] text-white placeholder-zinc-500 focus:outline-none px-1.5 py-1.5 min-w-0"/>
+<div id="idle-icons" class="flex items-center gap-0.5">
+<button type="button" class="p-1.5 text-white opacity-70"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg></button>
+<button type="button" class="p-1.5 text-white opacity-70"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></button>
+<button type="button" id="emoji-btn" class="p-1.5 text-white opacity-70"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></button>
+</div>
+<button type="submit" id="send-btn" class="hidden text-[#3797F0] font-semibold text-[15px] px-2 py-1">Send</button>
+</div>
+</form>
+<p id="rate-limit-msg" class="hidden text-[11px] text-amber-500 text-center mt-1.5"></p>
+</div>
+</div>
+
+<div id="share-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-5">
+<div class="w-full max-w-sm bg-zinc-900 rounded-2xl border border-zinc-800 p-5 space-y-4">
+<div class="text-center"><h3 class="text-lg font-semibold">Share Room</h3><p class="text-sm text-zinc-500 mt-0.5">Anyone with this link can join</p></div>
+<div class="flex gap-2"><input id="share-link-input" type="text" readonly class="flex-1 px-3 py-2.5 rounded-xl bg-zinc-800 border border-zinc-700 text-sm text-zinc-300 focus:outline-none"/><button id="copy-link-btn" class="px-4 py-2.5 rounded-xl bg-white text-black text-sm font-semibold">Copy</button></div>
+<div class="grid grid-cols-2 gap-2"><a id="share-whatsapp" target="_blank" rel="noopener" class="flex items-center justify-center py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-medium">WhatsApp</a><a id="share-telegram" target="_blank" rel="noopener" class="flex items-center justify-center py-2.5 rounded-xl bg-sky-600 text-white text-sm font-medium">Telegram</a></div>
+<button id="close-share" class="w-full py-2.5 rounded-xl text-sm text-zinc-400">Close</button>
+</div>
+</div>
+
+<div id="reaction-picker" class="hidden fixed z-50 bg-zinc-900 border border-zinc-700 rounded-full px-2 py-1.5 shadow-2xl flex gap-1 animate-scale-in">
+<button data-emoji="❤️" class="w-9 h-9 flex items-center justify-center text-xl">❤️</button>
+<button data-emoji="😂" class="w-9 h-9 flex items-center justify-center text-xl">😂</button>
+<button data-emoji="😮" class="w-9 h-9 flex items-center justify-center text-xl">😮</button>
+<button data-emoji="😢" class="w-9 h-9 flex items-center justify-center text-xl">😢</button>
+<button data-emoji="👍" class="w-9 h-9 flex items-center justify-center text-xl">👍</button>
+</div>
+
+<script>
+const SUPABASE_URL='https://vwpvbhuqvxmshkktqncp.supabase.co';
+const SUPABASE_ANON_KEY='sb_publishable_zGlQFEHSb-H1KblpZ6AfVQ_Vn8x1ozE';
+const PUBLIC_ROOM='PUBLIC';
+const RATE_LIMIT_MS=1800;
+const MAX_MESSAGE_LENGTH=500;
+let supabaseClient=null,displayName=localStorage.getItem('chatroom_name')||'',roomCode=localStorage.getItem('chatroom_room')||'',messages=[],lastSentAt=0,presenceChannel=null,messagesChannel=null,onlineUsers={},typingUsers=new Set(),hideTypingTimer=null,lastTap={id:null,time:0},activeReactionMsgId=null;
+const EMOJIS=['😀','😂','🤣','😊','😍','🥰','😘','😜','🤔','😎','😢','😭','😡','🤯','😴','🤗','🙌','👍','👎','👏','🔥','✨','💯','🎉','❤️','💙','💚','💜','🧡','🖤','🚀','🌟','⚡','🍀','🌈','🍕','☕','🎵','📸','💬'];
+const nameModal=document.getElementById('name-modal'),app=document.getElementById('app'),nameInput=document.getElementById('name-input'),roomInput=document.getElementById('room-input'),joinPublic=document.getElementById('join-public'),joinPrivate=document.getElementById('join-private'),shareBtn=document.getElementById('share-btn'),messageInput=document.getElementById('message-input'),sendBtn=document.getElementById('send-btn'),idleIcons=document.getElementById('idle-icons');
+function updateButtons(){const hasName=nameInput.value.trim().length>=2;joinPublic.disabled=!hasName;joinPrivate.disabled=!hasName||roomInput.value.trim().length<3}
+nameInput.addEventListener('input',updateButtons);roomInput.addEventListener('input',()=>{roomInput.value=roomInput.value.replace(/[^a-zA-Z0-9-_]/g,'').toUpperCase();updateButtons()});
+function avatarColor(name){const colors=['#E1306C','#833AB4','#405DE6','#3797F0','#22C55E','#F59E0B','#EF4444'];let h=0;for(let i=0;i<name.length;i++)h=name.charCodeAt(i)+((h<<5)-h);return colors[Math.abs(h)%colors.length]}
+function initials(name){return (name||'?').slice(0,2).toUpperCase()}
+function enterRoom(name,room){displayName=name;roomCode=room;localStorage.setItem('chatroom_name',displayName);localStorage.setItem('chatroom_room',roomCode);nameModal.classList.add('hidden');app.classList.remove('hidden');app.classList.add('flex');const title=roomCode===PUBLIC_ROOM?'Open Room':roomCode;document.getElementById('room-title').textContent=title;const av=document.getElementById('room-avatar');av.textContent=initials(title);av.style.background=avatarColor(title);shareBtn.classList.toggle('hidden',roomCode===PUBLIC_ROOM);initChat()}
+if(displayName&&roomCode){enterRoom(displayName,roomCode)}else{const params=new URLSearchParams(window.location.search);const inviteRoom=(params.get('room')||'').toUpperCase().replace(/[^A-Z0-9-_]/g,'');if(inviteRoom&&inviteRoom.length>=3&&inviteRoom!=='PUBLIC')roomInput.value=inviteRoom;setTimeout(()=>nameInput.focus(),80)}
+joinPublic.addEventListener('click',()=>{const name=nameInput.value.trim();if(name.length<2)return;enterRoom(name,PUBLIC_ROOM)});
+joinPrivate.addEventListener('click',()=>{const name=nameInput.value.trim();const room=roomInput.value.trim().toUpperCase();if(name.length<2||room.length<3)return;if(room===PUBLIC_ROOM){alert('Choose a different code');return}enterRoom(name,room)});
+nameInput.addEventListener('keydown',e=>{if(e.key==='Enter')roomInput.focus()});roomInput.addEventListener('keydown',e=>{if(e.key==='Enter')joinPrivate.click()});
+document.getElementById('leave-btn').addEventListener('click',()=>{localStorage.removeItem('chatroom_room');localStorage.removeItem('chatroom_name');const url=new URL(window.location);url.searchParams.delete('room');window.history.replaceState({},'',url);location.reload()});
+const shareModal=document.getElementById('share-modal');
+shareBtn.addEventListener('click',()=>{if(!roomCode||roomCode===PUBLIC_ROOM)return;const link=new URL(window.location.origin+window.location.pathname);link.searchParams.set('room',roomCode);document.getElementById('share-link-input').value=link.toString();const text=encodeURIComponent('Join my private chat! '+link);document.getElementById('share-whatsapp').href='https://wa.me/?text='+text;document.getElementById('share-telegram').href='https://t.me/share/url?url='+encodeURIComponent(link)+'&text='+encodeURIComponent('Join my private chat!');shareModal.classList.remove('hidden')});
+document.getElementById('close-share').addEventListener('click',()=>shareModal.classList.add('hidden'));shareModal.addEventListener('click',e=>{if(e.target===shareModal)shareModal.classList.add('hidden')});
+document.getElementById('copy-link-btn').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(document.getElementById('share-link-input').value);document.getElementById('copy-link-btn').textContent='Copied!';setTimeout(()=>{document.getElementById('copy-link-btn').textContent='Copy'},1500)}catch{document.getElementById('share-link-input').select();document.execCommand('copy')}});
+messageInput.addEventListener('input',()=>{const hasText=messageInput.value.trim().length>0;sendBtn.classList.toggle('hidden',!hasText);idleIcons.classList.toggle('hidden',hasText);if(hasText)broadcastTyping()});
+const emojiPicker=document.getElementById('emoji-picker'),emojiGrid=emojiPicker.querySelector('div');
+EMOJIS.forEach(emoji=>{const btn=document.createElement('button');btn.type='button';btn.className='w-9 h-9 flex items-center justify-center text-xl rounded-lg hover:bg-zinc-800 transition';btn.textContent=emoji;btn.addEventListener('click',()=>{const start=messageInput.selectionStart,end=messageInput.selectionEnd;messageInput.value=messageInput.value.slice(0,start)+emoji+messageInput.value.slice(end);messageInput.focus();messageInput.selectionStart=messageInput.selectionEnd=start+emoji.length;messageInput.dispatchEvent(new Event('input'));emojiPicker.classList.add('hidden')});emojiGrid.appendChild(btn)});
+document.getElementById('emoji-btn').addEventListener('click',e=>{e.stopPropagation();emojiPicker.classList.toggle('hidden')});
+document.addEventListener('click',e=>{if(!emojiPicker.contains(e.target)&&e.target.id!=='emoji-btn')emojiPicker.classList.add('hidden');if(!document.getElementById('reaction-picker').contains(e.target))document.getElementById('reaction-picker').classList.add('hidden')});
+function relativeTime(iso){const sec=Math.floor((Date.now()-new Date(iso).getTime())/1000);if(sec<60)return'just now';if(sec<3600)return Math.floor(sec/60)+'m';if(sec<86400)return Math.floor(sec/3600)+'h';return new Date(iso).toLocaleDateString([],{month:'short',day:'numeric'})}
+function formatDivider(iso){const d=new Date(iso),now=new Date();if(d.toDateString()===now.toDateString())return'Today '+d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});return d.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'})+' '+d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}
+function canSendMessage(content){const remaining=RATE_LIMIT_MS-(Date.now()-lastSentAt);if(remaining>0){const msg=document.getElementById('rate-limit-msg');msg.textContent='Wait '+(remaining/1000).toFixed(1)+'s';msg.classList.remove('hidden');setTimeout(()=>msg.classList.add('hidden'),remaining);return false}if(content.length>MAX_MESSAGE_LENGTH)return false;return true}
+function initSupabase(){return window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)}
+async function loadMessages(){const{data,error}=await supabaseClient.from('messages').select('*').eq('room_code',roomCode).order('created_at',{ascending:true}).limit(150);if(error){console.error(error);return}messages=data||[];renderMessages()}
+function subscribeToMessages(){if(messagesChannel)supabaseClient.removeChannel(messagesChannel);messagesChannel=supabaseClient.channel('room-msgs:'+roomCode).on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:'room_code=eq.'+roomCode},payload=>{const newMsg=payload.new;if(!messages.find(m=>m.id===newMsg.id)){messages.push(newMsg);appendMessage(newMsg);scrollToBottom()}}).subscribe()}
+function setupPresenceAndTyping(){if(presenceChannel)supabaseClient.removeChannel(presenceChannel);presenceChannel=supabaseClient.channel('room:'+roomCode,{config:{presence:{key:displayName}}});presenceChannel.on('presence',{event:'sync'},()=>{onlineUsers={};Object.values(presenceChannel.presenceState()).forEach(presences=>{presences.forEach(p=>{if(p.user)onlineUsers[p.user]=true})});onlineUsers[displayName]=true;updateStatus()}).on('presence',{event:'join'},({newPresences})=>{newPresences.forEach(p=>{if(p.user)onlineUsers[p.user]=true});onlineUsers[displayName]=true;updateStatus()}).on('presence',{event:'leave'},({leftPresences})=>{leftPresences.forEach(p=>{if(p.user&&p.user!==displayName)delete onlineUsers[p.user]});updateStatus()}).on('broadcast',{event:'typing'},({payload})=>{if(payload.user===displayName)return;showTyping(payload.user)}).subscribe(async status=>{if(status==='SUBSCRIBED'){await presenceChannel.track({user:displayName,online_at:new Date().toISOString()});onlineUsers[displayName]=true;updateStatus()}})}
+function updateStatus(){const count=Object.keys(onlineUsers).length;document.getElementById('room-status').textContent=count<=1?'Active now':count+' active now'}
+function showTyping(user){typingUsers.add(user);document.getElementById('typing-indicator').classList.remove('hidden');clearTimeout(hideTypingTimer);hideTypingTimer=setTimeout(()=>{typingUsers.clear();document.getElementById('typing-indicator').classList.add('hidden')},2500)}
+function broadcastTyping(){if(!presenceChannel)return;presenceChannel.send({type:'broadcast',event:'typing',payload:{user:displayName}})}
+async function sendMessage(content){content=content.trim();if(!content||!displayName||!roomCode)return;if(!canSendMessage(content))return;lastSentAt=Date.now();const{error}=await supabaseClient.from('messages').insert({username:displayName,content,room_code:roomCode});if(error){console.error(error);alert('Failed to send')}}
+function escapeHtml(text){const d=document.createElement('div');d.textContent=text;return d.innerHTML}
+function createMessageElement(msg,prevMsg,nextMsg){const isMine=msg.username===displayName;const sameAsPrev=prevMsg&&prevMsg.username===msg.username;const sameAsNext=nextMsg&&nextMsg.username===msg.username;const wrap=document.createElement('div');wrap.className='flex '+(isMine?'justify-end':'justify-start')+' animate-fade-in group relative';wrap.dataset.id=msg.id;let avatarHtml='';if(!isMine){avatarHtml=!sameAsNext?`<div class="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-medium text-white" style="background:${avatarColor(msg.username)}">${initials(msg.username)}</div>`:`<div class="w-7 h-7 flex-shrink-0"></div>`}let nameHtml='';if(!isMine&&!sameAsPrev)nameHtml=`<div class="text-[11px] text-zinc-500 mb-0.5 ml-1">${escapeHtml(msg.username)}</div>`;let radius='rounded-3xl';if(isMine){if(sameAsPrev&&sameAsNext)radius='rounded-3xl rounded-r-lg';else if(sameAsPrev)radius='rounded-3xl rounded-tr-lg';else if(sameAsNext)radius='rounded-3xl rounded-br-lg'}else{if(sameAsPrev&&sameAsNext)radius='rounded-3xl rounded-l-lg';else if(sameAsPrev)radius='rounded-3xl rounded-tl-lg';else if(sameAsNext)radius='rounded-3xl rounded-bl-lg'}const bubbleClass=isMine?`bubble-out text-white ${radius} px-3.5 py-2 text-[15px] leading-snug max-w-[75%] break-words`:`bg-zinc-800 text-zinc-100 ${radius} px-3.5 py-2 text-[15px] leading-snug max-w-[75%] break-words`;wrap.innerHTML=`<div class="flex items-end gap-1.5 ${isMine?'flex-row-reverse':''} max-w-[85%]">${avatarHtml}<div class="flex flex-col ${isMine?'items-end':'items-start'}">${nameHtml}<div class="${bubbleClass}" data-msg-id="${msg.id}">${escapeHtml(msg.content)}</div></div></div>`;const bubble=wrap.querySelector('[data-msg-id]');bubble.addEventListener('click',e=>{const now=Date.now();if(lastTap.id===msg.id&&now-lastTap.time<350)showReactionPicker(e,msg.id);lastTap={id:msg.id,time:now}});return wrap}
+function showReactionPicker(e,msgId){const picker=document.getElementById('reaction-picker');activeReactionMsgId=msgId;picker.classList.remove('hidden');const x=Math.min(e.clientX-80,window.innerWidth-220);const y=e.clientY-50;picker.style.left=Math.max(8,x)+'px';picker.style.top=Math.max(8,y)+'px'}
+document.querySelectorAll('#reaction-picker button').forEach(btn=>{btn.addEventListener('click',()=>{const bubble=document.querySelector(`[data-msg-id="${activeReactionMsgId}"]`);if(bubble){let badge=bubble.parentElement.querySelector('.reaction-badge');if(!badge){badge=document.createElement('span');badge.className='reaction-badge absolute -bottom-2 text-xs bg-zinc-900 border border-zinc-700 rounded-full px-1.5 py-0.5';bubble.parentElement.style.position='relative';bubble.parentElement.appendChild(badge)}badge.textContent=btn.dataset.emoji}document.getElementById('reaction-picker').classList.add('hidden')})});
+function renderMessages(){const container=document.getElementById('messages'),empty=document.getElementById('empty-state');Array.from(container.children).forEach(el=>{if(el.id!=='empty-state')el.remove()});if(messages.length===0){empty.classList.remove('hidden');return}empty.classList.add('hidden');let lastDate='';messages.forEach((msg,i)=>{const day=new Date(msg.created_at).toDateString();if(day!==lastDate){lastDate=day;const div=document.createElement('div');div.className='flex justify-center my-3';div.innerHTML=`<span class="text-[11px] font-medium text-zinc-500">${formatDivider(msg.created_at)}</span>`;container.appendChild(div)}container.appendChild(createMessageElement(msg,messages[i-1],messages[i+1]))});scrollToBottom()}
+function appendMessage(msg){document.getElementById('empty-state').classList.add('hidden');const container=document.getElementById('messages');container.appendChild(createMessageElement(msg,messages[messages.length-2]||null,null))}
+function scrollToBottom(){const c=document.getElementById('messages');requestAnimationFrame(()=>{c.scrollTop=c.scrollHeight})}
+document.getElementById('message-form').addEventListener('submit',async e=>{e.preventDefault();const text=messageInput.value.trim();if(!text)return;sendBtn.disabled=true;await sendMessage(text);messageInput.value='';messageInput.dispatchEvent(new Event('input'));sendBtn.disabled=false;messageInput.focus();emojiPicker.classList.add('hidden')});
+function initChat(){supabaseClient=initSupabase();loadMessages();subscribeToMessages();setupPresenceAndTyping()}
+</script>
 </body>
 </html>
